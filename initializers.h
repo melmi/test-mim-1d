@@ -13,6 +13,7 @@ public:
         d->rbc_val = 0;
 
         std::fill_n(d->u, d->n, 0);
+        std::fill_n(d->ustar, d->n, 0);
         std::fill_n(d->p, d->n, 0);
         std::fill_n(d->d, d->n, depth);
         std::fill_n(d->h, d->n, 0);

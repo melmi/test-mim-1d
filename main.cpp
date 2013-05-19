@@ -9,7 +9,7 @@ int main(int argc, char const *argv[])
 {
     domain *d = new domain(1000);
     d->dx = 5;
-    d->dt = .6;
+    d->dt = .3;
     initializers::init_dambreak(d, 4, 2, 0, d->n / 2);
 
     double tend = 150;
