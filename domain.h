@@ -1,4 +1,5 @@
 #include <fstream>
+#include <algorithm>
 
 #ifndef DOMAIN_H
 #define DOMAIN_H
@@ -10,7 +11,7 @@ public:
 
     enum bctype {constxi, constp};
 
-    double *xi, *d, *p, *h, *u;
+    double *xi, *d, *p, *h, *u, *ustar;
     double dx, dt;
     int n;
     bctype lbc, rbc;
@@ -25,6 +26,17 @@ public:
         p = new double[n];
         h = new double[n];
         u = new double[n];
+        ustar = new double[n];
+    }
+
+    ~domain()
+    {
+        delete[] xi;
+        delete[] d;
+        delete[] p;
+        delete[] h;
+        delete[] u;
+        delete[] ustar;
     }
 
     double *get_grad(double *phi)
@@ -75,15 +87,12 @@ public:
             mass[i] = p[i] * dx;
 
         double *grad = get_grad(p);
-        double *grad_hdxidx = get_pressure_grad_narrow(xi);
         double gdt = gravity * dt;
-        // for (int i = 0; i < n; ++i)
-        //     grad[i] -= gdt * grad_hdxidx[i];
 
         for (int face = 0; face < n - 1; ++face)
         {
             int i = face, ii = face + 1;
-            double uf = 0.5 * (u[i] + u[ii]) - gdt * (u[ii] - u[i]) / dx; //* grad_hdxidx[i] / h[i];
+            double uf = 0.5 * (ustar[i] + ustar[ii]) - gdt * (xi[ii] - xi[i]) / dx;
             double flux;
             if (uf > 0)
                 flux = (p[i] + (dx / 2. - uf * dt / 2.) * grad[i]) * uf * dt;
@@ -98,7 +107,6 @@ public:
         }
         delete[] grad;
         delete[] mass;
-        delete[] grad_hdxidx;
     }
 
     void calc_dependent_vars()
@@ -221,58 +229,16 @@ public:
         // advect(p);
         advect_p();
         apply_p_bc();
-        calc_xi_exp();
-        // calc_xi_imp(1.e-6);
-        // eliminate_xi_nullspace();
+        std::copy(p, p + n, ustar);
+        for (int i = 0; i < n; ++i)
+            ustar[i] /= h[i];
+        // calc_xi_exp();
+        calc_xi_imp(1.e-6);
         update_p();
         apply_p_bc();
         calc_dependent_vars();
-    }
-
-    static double det_2x2(double a11, double a12, double a21, double a22)
-    {
-        return a11 * a22 - a21 * a12;
-    }
-
-    static void solve_2x2(double a11, double a12, double a21, double a22, double b1, double b2, double &x1, double &x2)
-    {
-        double d = det_2x2(a11, a12, a21, a22);
-        x1 = det_2x2(b1, a12, b2, a22) / d;
-        x2 = det_2x2(a11, b1, a21, b2) / d;
-    }
-
-    void get_elim_coeffs(double &a0, double &a1)
-    {
-        double a11, a12, a21, a22, b1, b2;
-        a11 = a22 = n;
-        a12 = a21 = (n + 1) % 2;
-        double p1i = -1;
-        b1 = b2 = 0;
-        for (int i = 0; i < n; ++i)
-        {
-            p1i *= -1;
-            b1 += xi[i];
-            b2 += p1i * xi[i];
-            // std::cout<<p1i<<" "<<xi[i]<<" "<<b2<<std::endl;
-            // std::getchar();
-        }
-        solve_2x2(a11, a12, a21, a22, b1, b2, a0, a1);
-
-        a0 = -a0;
-        a1 = -a1;
-    }
-
-    void eliminate_xi_nullspace()
-    {
-        double a0, a1;
-        get_elim_coeffs(a0, a1);
-
-        double p1i = -1;
-        for (int i = 0; i < n; ++i)
-        {
-            p1i *= -1;
-            xi[i] += a0 + p1i * a1;
-        }
+        // for (int i = 0; i < n; ++i)
+        //     ustar[i] /= h[i];
     }
 
     void get_state(double &sigma_mass, double &sigma_energy)
