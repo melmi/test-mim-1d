@@ -1,0 +1,18 @@
+{
+    "dt" : 0.3,
+    "dx" : 5,
+    "n" : 1000,
+    "tend" : 150,
+    "write dt" : 1.0,
+
+    "bc" :
+    [
+        { "left" : { "type" : "conxtp", "value" : 0 } },
+        { "right" : { "type" : "conxtp", "value" : 0 } }
+    ],
+    "ic" :
+    {
+        "type" : "dam break",
+        "settings" : { "hl" : 2, "hr" : 0 }
+    }
+}
